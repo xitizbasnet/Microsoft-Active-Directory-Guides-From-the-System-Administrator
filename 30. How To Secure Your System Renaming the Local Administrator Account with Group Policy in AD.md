@@ -8,7 +8,7 @@
 
 ## 📘 Overview
 
-In our domain user we all have the administrator account. For security reason we must change it. To change the account from administrator to sysadmin to the domain cimputer we can do it from the active directory.
+In our domain user we all have the administrator account. For security reason we must change it. To change the account from administrator to sysadmin to the domain computer we can do it from the active directory.
 
 Renaming the default **Administrator** account is a recommended security hardening practice. Attackers commonly target well-known account names, and changing this reduces the attack surface across domain-joined systems.
 

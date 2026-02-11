@@ -1,0 +1,53 @@
+$ComputerName = "192.168.1.10"
+
+$ExportPath = "C:\Reports"
+$CSVFile    = "$ExportPath\$ComputerName-Full-Inventory.csv"
+
+if (!(Test-Path $ExportPath)) {
+    New-Item -ItemType Directory -Path $ExportPath | Out-Null
+}
+
+if (-not (Test-Connection -ComputerName $ComputerName -Count 1 -Quiet)) {
+    exit
+}
+
+$CS   = Get-WmiObject Win32_ComputerSystem -ComputerName $ComputerName
+$OS   = Get-WmiObject Win32_OperatingSystem -ComputerName $ComputerName
+$CPU  = Get-WmiObject Win32_Processor -ComputerName $ComputerName | Select-Object -First 1
+$BIOS = Get-WmiObject Win32_BIOS -ComputerName $ComputerName
+
+$Disks = Get-WmiObject Win32_LogicalDisk -ComputerName $ComputerName -Filter "DriveType=3"
+$DiskSizeGB = [math]::Round(($Disks | Measure-Object Size -Sum).Sum / 1GB, 2)
+$DiskFreeGB = [math]::Round(($Disks | Measure-Object FreeSpace -Sum).Sum / 1GB, 2)
+
+$GPU = Get-WmiObject Win32_VideoController -ComputerName $ComputerName | Select-Object -First 1
+
+$NIC = Get-WmiObject Win32_NetworkAdapterConfiguration -ComputerName $ComputerName |
+       Where-Object { $_.IPEnabled -eq $true } |
+       Select-Object -First 1
+
+$Report = [PSCustomObject]@{
+    "Collected Date"   = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    "Computer Name"    = $CS.Name
+    "Domain"           = $CS.Domain
+    "Logged In User"   = $CS.UserName
+    "Manufacturer"    = $CS.Manufacturer
+    "Model"            = $CS.Model
+    "Serial Number"    = $BIOS.SerialNumber
+    "Operating System" = $OS.Caption
+    "OS Version"       = $OS.Version
+    "Architecture"     = $OS.OSArchitecture
+    "CPU Name"         = $CPU.Name
+    "CPU Cores"        = $CPU.NumberOfCores
+    "Logical CPUs"     = $CPU.NumberOfLogicalProcessors
+    "RAM (GB)"         = [math]::Round($CS.TotalPhysicalMemory / 1GB, 2)
+    "Disk Size (GB)"   = $DiskSizeGB
+    "Free Disk (GB)"   = $DiskFreeGB
+    "GPU Name"         = $GPU.Name
+    "GPU RAM (MB)"     = [math]::Round($GPU.AdapterRAM / 1MB, 0)
+    "IP Address"       = ($NIC.IPAddress -join ", ")
+    "MAC Address"      = $NIC.MACAddress
+    "Network Adapter"  = $NIC.Description
+}
+
+$Report | Export-Csv -Path $CSVFile -NoTypeInformation -Encoding UTF8

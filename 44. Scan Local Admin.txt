@@ -1,0 +1,51 @@
+Import-Module ActiveDirectory
+
+$Computers = Get-ADComputer -Filter * | Select-Object -ExpandProperty Name
+$Report = @()
+
+foreach ($Computer in $Computers) {
+
+    # Check if device is online
+    if (-not (Test-Connection -ComputerName $Computer -Count 1 -Quiet)) {
+        $Report += [PSCustomObject]@{
+            ComputerName  = $Computer
+            AccountName   = "Offline"
+            AccountSource = "Offline"
+        }
+        continue
+    }
+
+    try {
+        $Admins = Get-WmiObject -Class Win32_GroupUser -ComputerName $Computer -ErrorAction Stop |
+        Where-Object { $_.GroupComponent -like '*"Administrators"' }
+
+        foreach ($Admin in $Admins) {
+
+            $Account = ($Admin.PartComponent -split 'Name=')[1].Replace('"','')
+            $Domain  = ($Admin.PartComponent -split 'Domain=')[1].Split(',')[0].Replace('"','')
+
+            if ($Domain -eq $Computer) {
+                $Source = "Local Account"
+            }
+            else {
+                $Source = "Domain Account"
+            }
+
+            $Report += [PSCustomObject]@{
+                ComputerName  = $Computer
+                AccountName   = "$Domain\$Account"
+                AccountSource = $Source
+            }
+        }
+    }
+    catch {
+        $Report += [PSCustomObject]@{
+            ComputerName  = $Computer
+            AccountName   = "RPC / WMI Blocked"
+            AccountSource = "Error"
+        }
+    }
+}
+
+$Report | Export-Csv "C:\Local_Admin.csv" -NoTypeInformation -Encoding UTF8
+$Report

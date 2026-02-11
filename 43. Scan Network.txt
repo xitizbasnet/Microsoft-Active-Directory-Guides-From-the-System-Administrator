@@ -1,0 +1,40 @@
+
+$Subnet   = "x.x.x."      
+$Start    = 1
+$End      = 254
+$ReportPath = "$env:USERPROFILE\Desktop\Network-IP-Report.csv"  
+
+Write-Host "Scanning network $Subnet* ..." -ForegroundColor Cyan
+
+$Results = for ($i = $Start; $i -le $End; $i++) {
+    $IP = "$Subnet$i"
+    Write-Host "Checking $IP ..." -ForegroundColor DarkGray
+
+    if (Test-Connection -ComputerName $IP -Count 1 -Quiet) {
+        try {
+            $HostName = [System.Net.Dns]::GetHostEntry($IP).HostName
+        } catch {
+            $HostName = "Unknown"
+        }
+        $Status = "In Use"
+    } else {
+        $Status = "Free"
+        $HostName = ""
+    }
+
+    [PSCustomObject]@{
+        IPAddress = $IP
+        Status    = $Status
+        HostName  = $HostName
+    }
+}
+
+
+$Used   = $Results | Where-Object { $_.Status -eq "In Use" }
+$Free   = $Results | Where-Object { $_.Status -eq "Free" }
+$Results | Export-Csv -Path $ReportPath -NoTypeInformation -Encoding UTF8
+
+Write-Host "`n✅ Scan complete!"
+Write-Host "🟢 Used IPs: $($Used.Count)"
+Write-Host "🟡 Free IPs: $($Free.Count)"
+Write-Host "📄 Report saved to: $ReportPath" -ForegroundColor Green

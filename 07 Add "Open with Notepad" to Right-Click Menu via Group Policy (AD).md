@@ -1,4 +1,4 @@
-## 🛠️ Step-by-Step: Add "Open with Notepad" to Right-Click Menu via Group Policy (AD)
+## 🛠️ Step-by-Step: Add Open with Notepad to Right-Click Menu via Group Policy (AD)
 
 ---
 
